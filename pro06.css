@@ -1,0 +1,136 @@
+/* Make logo images circular */
+img[src*="ritlogo_transparent.png"] {
+    border-radius: 50%;
+}
+/* Reset default margins and paddings */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+
+/* base page */
+/* base page */
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  background-color: #0b0b0b; /* page color */
+  position: relative;
+  font-family: Arial, sans-serif;
+  color: #fff;
+}
+
+/* faint faded logo behind content (watermark) */
+body::before {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  content: "";
+  position: fixed;
+  inset: 0;                        /* full screen */
+  pointer-events: none;
+  background: url('ritlogo_transparent.png') no-repeat center center; /* centered horizontally & vertically */
+  background-size: contain;        /* keep proportions */
+  opacity: 0.08;                   /* subtle faint watermark */
+  z-index: 0;
+}
+
+/* brightened overlay of the same logo to make dark letters visible */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: url('ritlogo_transparent.png') no-repeat center center; /* centered */
+  background-size: contain;
+  /* mix/blend and filter to brighten the dark parts (the 'rit' text) */
+  mix-blend-mode: screen;          /* lighten darker pixels */
+  filter: brightness(2) contrast(1.05) saturate(0.9);
+  opacity: 0.10;                   /* fine-tune intensity */
+  z-index: 0;
+}
+
+/* Ensure your main content sits above the logo layers */
+header, main, footer, .hero, .sidebar {
+  position: relative;
+  z-index: 1;
+}
+
+
+/* Side Navigation */
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 200px;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    padding-top: 20px;
+}
+
+.sidebar ul {
+    list-style-type: none;
+}
+
+.sidebar ul li {
+    padding: 15px;
+    text-align: center;
+    cursor: pointer;
+}
+
+.sidebar ul li:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Hero section */
+.hero {
+    margin-left: 200px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-left: 50px;
+    background-color: rgba(0, 0, 0, 0.4); /* Dark overlay for text visibility */
+}
+
+.hero h1 {
+    font-size: 3rem;
+    margin-bottom: 20px;
+}
+
+.hero .date {
+    font-size: 1rem;
+    margin-bottom: 10px;
+}
+
+.buttons {
+    display: flex;
+    gap: 20px;
+}
+
+.btn {
+    background-color: #ff6600;
+    padding: 10px 20px;
+    color: white;
+    text-decoration: none;
+    border-radius: 5px;
+}
+
+.btn:hover {
+    background-color: #e65c00;
+}
+
+.btn-secondary {
+    background-color: transparent;
+    padding: 10px 20px;
+    color: white;
+    border: 1px solid white;
+    border-radius: 5px;
+    text-decoration: none;
+}
+
+.btn-secondary:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}

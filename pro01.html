@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Introducing MyBot</title>
+
+<title>Freshers'Friend — College Chatbot</title>
+<style>
+  :root{
+    --bg:#0b0c10;
+    --panel:#111214;
+    --muted:#98a0b3;
+    --bot:#444654;
+    --user:#0b93f6;
+    --accent:#19c37d;
+    --header:#0f1113;
+  }
+  html,body{height:100%;margin:0;font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;}
+  body{background:linear-gradient(180deg,#0b0c10 0%, #0f1113 100%); color:#e6eef8; display:flex; flex-direction:column;}
+  /* Header */
+  header{
+    background:var(--header);
+    border-bottom:1px solid rgba(255,255,255,0.04);
+    padding:14px 18px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:12px;
+  }
+  header .brand{
+    display:flex;
+    align-items:center;
+    gap:12px;
+  }
+header img{width:44px;height:44px; border-radius:50%; object-fit:cover; background:#fff;}
+  header h1{margin:0;font-size:20px;font-weight:700;letter-spacing:0.2px;}
+  header p{margin:0;color:var(--muted);font-size:13px;margin-left:6px;}
+
+  /* Layout */
+  .app{
+    display:flex;
+    flex:1;
+    min-height:0; /* allow proper flex scroll */
+  }
+  main{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    min-width:0;
+    max-width:980px;
+    margin:28px auto;
+    border-radius:12px;
+    background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    box-shadow: 0 8px 30px rgba(2,6,23,0.6);
+    overflow:hidden;
+    height:78vh;
+  }
+
+  /* Chat area */
+  .messages{
+    padding:22px;
+    overflow:auto;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    flex:1;
+    scroll-behavior:smooth;
+  }
+  .msg{max-width:78%; padding:12px 14px; border-radius:12px; line-height:1.4; word-wrap:break-word;}
+  .bot{ background:rgba(255,255,255,0.03); align-self:flex-start; color:#e6eef8; }
+  .user{ background:linear-gradient(90deg,var(--user), #0a7ad1); color:white; align-self:flex-end; }
+
+  /* Bot header note */
+  .bot-intro{ font-size:14px; color:var(--muted); margin-bottom:6px; }
+
+  /* Input area */
+  .composer{
+    padding:14px;
+    border-top:1px solid rgba(255,255,255,0.03);
+    display:flex;
+    gap:10px;
+    align-items:center;
+    background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));
+  }
+  .input{
+    flex:1;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background: #0f1318;
+    border-radius:10px;
+    padding:8px 12px;
+    border:1px solid rgba(255,255,255,0.02);
+  }
+  .input input{
+    flex:1;
+    background:transparent;
+    border:0;
+    outline:0;
+    color: #e6eef8;
+    font-size:15px;
+    padding:10px 6px;
+  }
+  button.send{
+    background:var(--accent);
+    border:0; color:white; padding:10px 14px; border-radius:8px; font-weight:600; cursor:pointer;
+  }
+  button.send:active{transform:translateY(1px)}
+  .hint{font-size:13px;color:var(--muted);padding-left:6px;}
+
+  /* small screens */
+  @media (max-width:640px){
+    main{margin:12px; height:80vh;}
+    header h1{font-size:18px;}
+    header img{width:36px;height:36px;}
+  }
+</style>
+</head>
+<body>
+  <header>
+
+    <div class="brand" aria-hidden>
+      <div style="width:48px;height:48px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+        <img src="ritlogo_transparent.png" alt="RIT Logo" style="width:44px;height:44px;object-fit:cover;border-radius:50%;background:#fff;" />
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;">
+        <h1>Freshers'Friend</h1>
+        <p style="margin-top:4px;">Ask anything about RIT — placements, hostels, mess, rules & more</p>
+      </div>
+    </div>
+  </header>
+
+  <div class="app">
+    <main role="main" aria-label="Chat">
+      <div class="messages" id="messages">
+        <div class="msg bot">
+          <div class="bot-intro">Hey! I'm Freshers'Friend — your friendly college helper. Ask me anything 😊</div>
+        </div>
+      </div>
+
+      <div class="composer" role="region" aria-label="Message composer">
+        <div class="input">
+          <input id="inputBox" placeholder="Try: 'How's the hostel food?' or 'placement stats?'" onkeydown="if(event.key==='Enter') sendMessage()">
+        </div>
+        <button class="send" id="sendBtn" onclick="sendMessage()">Send</button>
+      </div>
+    </main>
+  </div>
+
+<script>
+/*
+  Dataset: 100 casual Q's + friendly answers (saved).
+  The bot will find the best match by counting overlapping words
+  (after removing small stopwords). You can replace answers later.
+*/
+const dataset = [
+  /* Placement & Jobs (1-10) */
+  {q:"how is placement ", a:"Placement is good — many companies visit every year across IT, core, and recruiters range from startups to large MNCs(Eg:Amazon,TCS,ZOHO). Expect active drives in final year."},
+  {q:"Placed students?",a:"They’re doing great! Most of our recently placed seniors have started their roles in top companies and are settling in well. Many share that their college projects and internships really helped them adjust quickly. Some are even guiding juniors on interview tips and career choices. You might spot them visiting campus soon — ready to inspire the next batch of achievers!"},
+  {q:" highest package ", a:"So recently one of the student got 42 LPA in Amazon, lots of freshers get placed, especially in software and internships"},
+  {q:"Top mnc companies ", a:"Every year, top MNCs visit our campus. In the recent season, we had TCS, Infosys, Wipro, Accenture, Cognizant, Capgemini, and Deloitte, along with emerging product-based companies. The upcoming year’s recruiter list will be announced by our Training & Placement Cell — so keep an eye on the notice board and your email!"},
+  {q:"placement training", a:"Placement training starts from the I year so you’re ready when recruiters arrive. Our program includes: 1.Aptitude & Logical Reasoning practice 2.Technical skill sessions (coding, core subjects, latest tools) 3.Soft skills & Communication workshops 4.Mock interviews with industry experts 5.Group discussions & HR rounds practice 6.The Training & Placement Cell works closely with departments to make sure you have both the technical knowledge and confidence to crack any interview."},
+  {q:"How many students got jobs last year?", a:"Around 601 out of 626 eligible students,in percentage it is 96.31% "},
+  {q:"Are the placements only for CS guys", a:"Not at all. CSE,AI&DS ECE, ME, Civil, and other branches receive relevant job offers too — especially for core roles."},
+  {q:"Any internships before final year", a:"Yep — many companies visit for internships during 3rd year and summer breaks. Internships often turn into pre-placement offers."},
+  {q:"Which companies hire the most?", a:"TCS, Infosys, Cognizant Followed by Zoho, Virtusa, Prodapt, Capgemini, Wipro, HCL and many companies hire the most "},
+  {q:"Do we have core companies", a:"We have both — IT placements dominate, but core engineering, consulting, and fabrication firms visit depending on branch and student interest."},
+  {q:" placement percentage for the last 5 years?", a:"The average placement percentage over the last five years at RIT is 90.30%."},
+  {q:"Placement is based on CGPA or knowledge", a:"Both matter, but in different ways!Most companies set a minimum CGPA as an eligibility criteria — think of it as the ticket to sit for the interview. Once you’re in, your knowledge, skills, and interview performance decide whether you get the offer.Here we are trying to maintain good academics and sharpen your technical & soft skills, so you can makeup yourself for both " },
+
+  /* Hostel Life (11-20) */
+  {q:"How's the hostel food, bro?", a:"Hostel food is decent — Here we offering well hyginic food (veg only)."},
+  {q:"Is WiFi actually fast in hostel?", a:"WiFi is provided in hostels; speed is usually good for study and video calls, though some times can be slower."},
+  {q:"Can I get AC room in hostel?", a:"AC rooms are limited and often allotted  for an extra fee — check with hostel administration for availability and rules."},
+  {q:"single hostelroom?", a:"Single rooms in hostel are rare and usually reserved for special cases or paid upgrades. Mostly you will get four sharing."},
+  {q:"Any rules for going out at night?", a:"Hostellers are not allowed for outing at night for safety purpose."},
+  {q:"hostel life", a:"Hostel culture is generally chill but with set rules — respectful behavior, visitor timing, and quiet hours are enforced."},
+  {q:"hostel rooms clean ", a:"Cleanliness depends on occupants. Housekeeping services do periodic cleaning.Personal upkeep is expected from students."},
+  {q:"Outing allowed in hostel",a:"Yes on Sundays you can go outing, but it needs to be verified with your parents and you should return before 6 pm "},
+
+  /* Campus & Infrastructure (21-30) */
+  {q:"College library ", a:"Library is well-stocked with textbooks, e-resources, and study spaces; quiet zones and group-study rooms are usually available"},
+  {q:" gym available?", a:"Gym facilities are decent with basic equipment.You can do your workouts from early morning to 7 pm "},
+  {q:"what about sports?", a:"Our campus has facilities for cricket, football, basketball, badminton, athletics, and more. We host annual sports meets, inter-department tournaments, and even send teams to compete at university and national levels. Whether you’re a serious athlete or just want to play for fun, there’s always a game happening at RIT!"},
+  {q:"Are classrooms have AC?", a:"Major lecture halls have AC; classrooms  dont have AC. All of the labs contains AC"},
+  {q:"lab equipment?", a:"Labs are generally functional for coursework and projects; advanced equipment may be limited."},
+  {q:"Is WiFi available everywhere?", a:"WiFi covers most academic and residential areas. Ethernet in labs often offers stable connections."},
+  {q:"College canteen?", a:"Our canteen is the only hangout hub! With 7 different stalls serving snacks, meals, and quick bites, it’s where friends meet, stories are shared, and plans are made."},
+  {q:"Do we have a gaming room?", a:"we have seperate center to get to know about AR/VR projects and games , but not like a gaming room"},
+  {q:"Is the auditorium big?", a:"Auditorium usually fits out most 250 -300 major events — good for small fests and seminars."},
+  {q:"How’s the parking space?", a:"Parking is available for both students and faculties but can fill up early "},
+ /* Food & Mess (31-40) */
+  {q:"How is mess food quality?", a:"Mostly ok — occasional off-days happen. if you dont like the food you can raise complaints or even order food outside"},
+  {q:" Non veg  available?", a:"RIT is a non-veg free campus - though you can get egg on Sunday,Monday,Thursday and Saturday ,ordering non veg is allowed for boys hostel and on only weekends for girls "},
+  {q:" outside food?", a:"Yes — you can eat outside by ordering "},
+  {q:"Is breakfast unlimited?", a:"Except deserts and egg, everything is unlimited "},
+  {q:"They give tea/coffee daily?", a:"Tea/coffee is commonly available daily on evening from 4:00 to 5:30"},
+  {q:"Snacks will provide in evening?", a:"Yes — evening snacks are common:groundnut from the canteen."},
+  {q:" Sunday menu ?", a:"Yes!-you will be provided with veg biriyani with egg and ice cream as desert"}, 
+  {q:"can we order to hostel?", a:"Delivery is usually allowed and you have to collect it from outside"},
+  {q:"mess food hygienic?", a:"Messes aim for hygiene but standards vary. We follow strict food-safety practices; personal caution always helps."},
+
+  /* Transport (41-50) */
+  {q:" college buses routes?", a:"Buses cover major routes; check transport office for route maps and stops — some areas may require a short walk to the nearest stop."},
+  
+
+  {q:"Is bus pass compulsory?", a:"No - You can travel in any bus ,there is no such thing as bus pass or bus fee (even hostellers can travel in bus while going to hometown)"},
+  {q:" bus fee is needed?", a:"there is no such thing as bus fee, anyone with RIT official id card can travel in bus"},
+  {q:"Are buses on time?", a:"Most routes run on schedule but there can be delays during traffic. Plan a buffer for important classes."},
+  {q:" own transport is allowed?", a:"Yes — students commonly use bikes. We request you to obey the traffic rules and use helmet for your safety "},
+  {q:"Is parking free?", a:"Yes parking is free for students and faculties"},
+  {q:" buses run on weekends?", a:"If rarely college is conducted on saturdays, buses will be operated on that day. Otherwise buses are not available on weekends"},
+  {q:"transport safe for girls?", a:"Ofcourse safety is our 1st priority. It is safe for both Boys and girls "},
+  {q:"Distance college from city?", a:"RIT is 28 kms away from Chennai central,which is roughly 90 mins to 120 mins ride"},
+  {q:"Is bus AC or normal?", a:"All the buses are air-conditioned and comfy for everyone"},
+
+  /* Rules & Regulations (51-60) */
+  {q:" dress code?", a:"Dress code is typically casuals — formals on most days. Traditional wear are allowed on fests"},
+  {q:"Jeans is alowed?", a:"Jeans are allowed but should be avoided on exam days and on interview days "},
+  {q:" ID card compulsory?", a:"Yes — ID cards are  mandatory for campus entry, exams, library access. Without id you can't enter the campus"},
+  {q:"Can we use phone in class?", a:"Phones are allowed inside campus but using them during lectures is strictly not allowed, if caught , Phones will be ceiased "},
+  {q:" attendance is important?", a:"Yes — most courses require a minimum attendance percentage of 75%  to be eligible for exams."},
+  {q:"attendance  required?", a:"Around 75% required as a minimum attendance  to be eligible for exams."},
+  {q:" fine for late fees?", a:"You will be given some warninngs before assigning penalties "},
+  {q:"Can I bunk classes?", a:"You can't bunk classes but you can participate in other events with On Duty permission from HOD"},
+  {q:"Is ragging there?", a:"Ragging is strictly prohibited. Colleges have anti-ragging committees and helplines — report any incidents immediately."},
+  {q:" hostel timings strict?", a:"Hostel timings exist (curfews/visitor hours). They can be strict especially for first years; seek permissions when needed."},
+
+
+  /* Admissions & Cut-Offs (61-70) */
+  {q:"What is the cut-off ?", a:"BE – Computer Science & Engineering (CSE): Opening Rank 1,555, Closing Rank 10,952, Approx. Cutoff Mark ~187, Annual Fee ₹1,50,000<br>B.Tech – Artificial Intelligence & Data Science: Opening Rank 4,890, Closing Rank 15,683, Approx. Cutoff Mark ~184, Annual Fee ₹1,50,000<br>BE – CSE (AI & ML): Opening Rank 5,421, Closing Rank 17,120, Approx. Cutoff Mark ~183, Annual Fee ₹1,50,000<br>B.Tech – Computer Science & Business Systems: Opening Rank 3,892, Closing Rank 14,512, Approx. Cutoff Mark ~185, Annual Fee ₹1,50,000<br>BE – Computer & Communication Engineering (CCE): Opening Rank 6,234, Closing Rank 18,858, Approx. Cutoff Mark ~182, Annual Fee ₹1,50,000<br>BE – Electronics & Communication Engg (ECE): Opening Rank 2,245, Closing Rank 12,343, Approx. Cutoff Mark ~186, Annual Fee ₹1,50,000<br>"},
+  {q:"donation asking to join in management?", a:"Donation policies vary.Ask admissions directly—legal/transparent colleges publish fee structures clearly."},
+  {q:"lowest cut-off branch ?", a:"Branches like Civil or certain specialized streams may have lower cut-offs compared to CSE — depends on the year."},
+  {q:"sports quota available?", a:"Yes — many colleges reserve seats under sports quota subject to trials and proof of achievements."},
+  {q:" entrance exam?", a:"You don't need to write any entrance exams - you will be admitted through your 12th state board marks and cutoffs"},
+  {q:" direct admission?", a:"Direct admissions sometimes happen under specific quotas or lateral entry"},
+  {q:"How many seats for each branch?", a:"Seat matrix is published yearly by the college — typically anywhere from 60 to 180 seats per branch."},
+  {q:"Can I change branch after?", a:"Once you are admitted in a specific department,You cant change it later"},
+  {q:" last year cut-off?", a:"Last year's cut-offs are on the admissions page — look for the specific round and category for accurate numbers."},
+  
+
+
+  /* Fees & Scholarships (71-80) */
+  {q:"Fees structure ?", a:"Fee depends on your mode of admission  In Councelling quota : Tution fee: 1.5l per annum \n In Management quota, \n tution fee: 2.25l per annum\n Hostel fee is common for all which is 80k  "},
+  {q:"Fee structure ?", a:"Fee depends on your mode of admission  In Councelling quota : Tution fee: 1.5l per annum \n In Management quota, \n tution fee: 2.25l per annum\n Hostel fee is common for all which is 80k  "},
+  {q:"college fee?", a:"Fee depends on your mode of admission  In Councelling quota : Tution fee: 1.5l per annum \n In Management quota, \n tution fee: 2.25l per annum\n Hostel fee is common for all which is 80k  "},
+  {q:"tution fee", a:"Fee depends on your mode of admission  In Councelling quota : Tution fee: 1.5l per annum \n In Management quota, \n tution fee: 2.25l per annum\n Hostel fee is common for all which is 80k  "},
+  {q:" installments?", a:"Yes installment option is there , it is based on your convinience"},
+  {q:"Any scholarship available ?", a:"Yes — scholarship is available : 50% off on cut off more than 180 and 75% off on cut off more than 185 and completely free for student with cut off more than 190"},
+  {q:" scholarship details ?", a:"Yes — scholarship is available : 50% off on cut off more than 180 , 75% off on cut off more than 185 ,completely free for student with cut off more than 190"},
+  {q:" tell about scholarship?", a:"Yes — scholarship is available : 50% off on cut off more than 180 and 75% off on cut off more than 185 and completely free for student with cut off more than 190"},
+  {q:"mess fee or hostel fee?", a:"hostel fee is 80000 (mess fee is already included )"},
+  {q:"fee concession?", a:"Fee concessions are available for high cutoff as a reward of the student's hardwork "},
+  {q:"transport fee compulsory?", a:"There is no transport fee.And also it is not compulsory anyone with official clg id card can board the bus"},
+  {q:"1sr graduate schlorship ?", a:"Yes. if you are a 1st graduate in your family-25000 will be reduced from your actual fee"},
+  {q:"refund policy?", a:"Refund policies are provided in admission terms — usually partial refunds under specific circumstances."},
+  {q:"extra fees for lab?", a:"NO. There is no extra fee regarding labarotary sessions"},
+  {q:"hostel location", a:"Boys hostel is at IMA college near Thirumzhisai,girls hostel is inside  the campus"},
+  {q:"Are the professors qualified?",a:"The professors at Rajalakshmi Institute of Technology (RIT) are highly qualified, with many holding postgraduate and doctoral degrees in their respective fields."},
+  {q:"professors have experience?",a:"Many faculty members have significant industry experience, ranging from several years to decades, which helps bridge academic knowledge with practical applications."},
+  {q:"student have mentor?",a:"Yes, RIT assigns dedicated faculty mentors to each student to provide academic guidance, career counseling, and personal support throughout their course."},
+  {q:"industry experts visit?",a:"Industry experts visit regularly, with guest lectures, workshops, and seminars organized throughout the academic year to expose students to current industry trends."},
+  {q:"visiting faculty from IIT/NIT?",a:"Yes, Rajalakshmi Institute of Technology invites visiting faculty from prestigious institutions such as IITs and NITs to deliver special lectures and conduct workshops."},
+  {q:"campus and college life", a:"Stress free campus in terms of academeics.No heptic study shedulegreen environment."},
+  {q:"transportation details", a:"to know about complete transpotation visit https://www.rittransport.com/ "},
+  {q:"principal name ", a:"Dr.Maheshwari Raja "},
+  {q:"", a:""},
+  {q:"", a:""},
+
+
+  /* Events & Clubs (81-90) */
+  {q:" college culturals ?", a:"Yes — annual cultural fests called YATRA with music, dance, and food stalls are a campus highlight.And also many fests are conducted during Pongal,Onam,Divali,Christmas and New year.And this event is completely organized by students to develop their organizing skills."},
+   {q:" events ", a:"Yes — annual cultural fests called YATRA with music, dance, and food stalls are a campus highlight.And also many fests are conducted during Pongal,Onam,Divali,Christmas and New year.And this event is completely organized by students to develop their organizing skills."},
+ 
+  {q:"tell about culturals", a:"Yes — annual cultural fests called YATRA with music, dance, and food stalls are a campus highlight.And also many fests are conducted during Pongal,Onam,Divali,Christmas and New year.And this event is completely organized by students to develop their organizing skills."},
+  {q:"Any functions are there?", a:"Yes — annual cultural fests called YATRA with music, dance, and food stalls are a campus highlight.And also many fests are conducted during Pongal,Onam,Divali,Christmas and New year"},
+  {q:"Do we have tech fests?", a:"Absolutely — tech fests and hackathons are organized with competitions, workshops, and guest talks.Some competition will invole going to other colleges"},
+  {q:" coding clubs?", a:"Club call Techspark involves coding and Hackthons related club is available in RIT"},
+  {q:"Any dance club?", a:"Club called R Squre is a dance club in which members will mostly perform in college fests and events, members are selected by auditions"},
+  {q:"sports competions?", a:"Yes — inter-college and intra-college tournaments are common across sports through the year."},
+  {q:"Can freshers join clubs?", a:"Freshers are encouraged to join — most clubs recruit at orientation and during the first semester."},
+  {q:"Any hackathons?", a:"Hackathons are frequently conducted by many clubs and other companies- Everyone is welcomed to participate in every Hackathons to gain Experience."},
+  {q:" photography club?", a:"Yes — photography and media clubs cover events and create campus content."},
+  {q:"free t-shirts in fests?", a:"Often yes — Every clubs will give their personalized t-shirts."},
+  {q:"What are the clubs in RIT?", a: "STEAM Club, IoT Club, CAM Club (Centre for Advanced Manufacturing), TechSparks Club, Mathematics Club, Language Club, Rotaract Club, Yuva Club (Young Indians), Photography Club, Women Empowerment Club" },
+  {q:"how many clubs are there ?", a: "STEAM Club, IoT Club, CAM Club (Centre for Advanced Manufacturing), TechSparks Club, Mathematics Club, Language Club, Rotaract Club, Yuva Club (Young Indians), Photography Club, Women Empowerment Club" },
+  {q:"club details ?", a: "STEAM Club, IoT Club, CAM Club (Centre for Advanced Manufacturing), TechSparks Club, Mathematics Club, Language Club, Rotaract Club, Yuva Club (Young Indians), Photography Club, Women Empowerment Club" },
+
+  /* General College Life (91-100) */
+  {q:"vibe in college?", a:"Vibe is friendly and energetic — lots of learning, less stress, and plenty of fun with friends."},
+  {q:"Is college strict ?", a:"Mix of both — academics can be strict, but campus life and clubs keep things chill and fun."},
+  {q:"Are seniors friendly?", a:"Seniors are generally helpful — you'll find many supportive ones ."},
+  {q:"Any cool hangout spots nearby?", a:"Yes — local cafes, parks, and shopping areas near campus are popular evening hangouts."},
+  {q:"Is college boring or fun here?", a:"Depends on you — join clubs, events, and friends and it becomes a blast; stay isolated and it can feel slow."},
+  {q:"Are there part-time jobs nearby?", a:"Part-time gigs, internships, and freelance opportunities exist in nearby localities and online."},
+  {q:"weather here?", a:"Weather depends on climate change — check local forecasts; campus life adjusts to seasonal swings."},
+  {q:"hostel near college campus?", a:"Hostel for girls is inside the campus and for boys it is just a 15 mins bus ride and college bus will be there anytime to drop you there"},
+  {q:"distance between college and hostel?", a:"Hostel for girls is inside the campus and for boys it is just a 15 mins bus ride and college bus will be there anytime to drop you there"},
+  {q:" hostel distance", a:"Hostel for girls is inside the campus and for boys it is just a 15 mins bus ride and college bus will be there anytime to drop you there"},
+  {q:"Any fun activities  in college?", a:"Hostel is conducted following big fst Yatra which is super fun with tasty food"},
+  
+  {q:"autonomous college", a:"RIT is a autonomous college which is affiliated to Anna university"},
+  { q: " NAAC rating?", a: "NAAC: Awarded A++ grade; NBA: Offers NBA-accredited courses; AICTE: Fully approved by AICTE" },
+  { q: "location of college", a: "Located in Kuthambakkam/Irulapalayam, Chennai along the NH4, near EVP Film City; 10.9 acres (≈ 44,029 m²) or 11 acres as per other sources" },
+  { q: "student faculty ratio?", a: "Maintains a ratio of 1:60" },
+ 
+  { q: "total students?", a: "Approximately 1,700–2,100 students enrolled in engineering programs; Around 168 faculty members" },
+  { q: "What is the vision and mission of the college?", a: "Vision: To set a benchmark in engineering education by imparting quality technical education fostering learning, research, and globally competent professionals. Mission: Deliver industry-relevant education that meets social and professional demands. Continuously enhance teaching standards and create a robust research atmosphere. Foster strong academia–industry collaboration." },
+   
+  {q:"what are the courses in rit ", a:"Computer Science and Engineering (CSE), Artificial Intelligence & Data Science (AI&DS), Mechanical Engineering (Mech), Biotechnology (Bio Tech), VLSI Design, Electronics and Communication Engineering (ECE), Computer Communication Engineering (CCE), Computer Science and Business Systems (CSBS), Artificial Intelligence and Machine Learning (AIML)."},
+  {q:"total courses ", a:"Computer Science and Engineering (CSE), Artificial Intelligence & Data Science (AI&DS), Mechanical Engineering (Mech), Biotechnology (Bio Tech), VLSI Design, Electronics and Communication Engineering (ECE), Computer Communication Engineering (CCE), Computer Science and Business Systems (CSBS), Artificial Intelligence and Machine Learning (AIML)."},
+
+  {q:"course details ", a:"Computer Science and Engineering (CSE), Artificial Intelligence & Data Science (AI&DS), Mechanical Engineering (Mech), Biotechnology (Bio Tech), VLSI Design, Electronics and Communication Engineering (ECE), Computer Communication Engineering (CCE), Computer Science and Business Systems (CSBS), Artificial Intelligence and Machine Learning (AIML)."},
+  {q:"what are the courses in rit ", a:"Computer Science and Engineering (CSE), Artificial Intelligence & Data Science (AI&DS), Mechanical Engineering (Mech), Biotechnology (Bio Tech), VLSI Design, Electronics and Communication Engineering (ECE), Computer Communication Engineering (CCE), Computer Science and Business Systems (CSBS), Artificial Intelligence and Machine Learning (AIML)."},
+
+  {q:"can we change course after joining?", a:"Yes, at Rajalakshmi Institute of Technology (RIT), students have the option to change their engineering branch after the first year, subject to their academic performance and availability of seats in the desired branch, following the college and Anna University guidelines."},
+  {q:"Does the college follow CBCS (Choice Based Credit System)?", a:"Yes, Rajalakshmi Institute of Technology (RIT) follows the Choice Based Credit System (CBCS) as prescribed by Anna University, allowing students flexibility in selecting courses based on their interests and career goals."},
+  {q:"How are theory and practical subjects balanced?", a:"At Rajalakshmi Institute of Technology (RIT), theory and practical subjects are well balanced by scheduling dedicated hours for both classroom lectures and hands-on lab sessions."},
+  {q:"Are there modern lab facilities for each department?", a:"Yes, Rajalakshmi Institute of Technology (RIT) provides modern and well-equipped laboratory facilities for each department to support practical learning, experimentation, and research activities."},
+  {q:"Is the syllabus updated regularly?", a:"Yes, at Rajalakshmi Institute of Technology (RIT), the syllabus is regularly updated in accordance with Anna University guidelines to keep pace with the latest technological advancements and industry requirements."},
+  {q:"Does the college offer minors or specializations?", a:"Yes, Rajalakshmi Institute of Technology (RIT) offers minors and specializations in emerging fields to help students deepen their knowledge and skills beyond their core engineering branch."},
+  {q:"Are there opportunities for interdisciplinary learning?", a:"Yes, Rajalakshmi Institute of Technology (RIT) encourages interdisciplinary learning by offering electives, projects, and collaborative activities that allow students to work across different engineering branches and fields."},
+  {q:"Are there online learning resources or LMS portals?", a:"Yes, Rajalakshmi Institute of Technology (RIT) provides online learning resources and has a Learning Management System (LMS) portal where students can access course materials, assignments, and communicate with faculty."},
+  {q:"Is there a continuous internal assessment system?", a:"Yes, Rajalakshmi Institute of Technology (RIT) follows a continuous internal assessment system that includes periodic tests, assignments, quizzes, and practical evaluations to continuously monitor and support student learning throughout the semester."},
+  
+  { q: "CSE cut off", a: "Opening Rank: 1,555; Closing Rank: 10,952; Approx. Cutoff: ~187; Annual Fee: ₹1,50,000" },
+  { q: "AIDS cut off", a: "Opening Rank: 4,890; Closing Rank: 15,683; Approx. Cutoff: ~184; Annual Fee: ₹1,50,000" },
+  { q: "AIML cut off", a: "Opening Rank: 5,421; Closing Rank: 17,120; Approx. Cutoff: ~183; Annual Fee: ₹1,50,000" },
+  { q: "CSBS cut off", a: "Opening Rank: 3,892; Closing Rank: 14,512; Approx. Cutoff: ~185; Annual Fee: ₹1,50,000" },
+  { q: "CCE cut off ", a: "Opening Rank: 6,234; Closing Rank: 18,858; Approx. Cutoff: ~182; Annual Fee: ₹1,50,000" },
+  { q: "ECE cut off", a: "Opening Rank: 2,245; Closing Rank: 12,343; Approx. Cutoff: ~186; Annual Fee: ₹1,50,000" },
+  { q: "VLSI cut off", a: "Opening Rank: 9,542; Closing Rank: 21,891; Approx. Cutoff: ~180; Annual Fee: ₹1,50,000" },
+  { q: "Bio tech cut off", a: "Opening Rank: 12,832; Closing Rank: 34,588; Approx. Cutoff: ~172; Annual Fee: ₹1,50,000" },
+  { q: "mech cut off", a: "Opening Rank: 14,451; Closing Rank: 39,404; Approx. Cutoff: ~170; Annual Fee: ₹1,50,000" },
+   /* Transport */
+
+
+
+];
+
+/* Basic stopwords to ignore during matching */
+const STOPWORDS = new Set([
+  "the","is","a","an","and","or","of","in","on","for","to","do","does","did","have","has","had",
+  "i","me","my","you","your","yours","we","us","our","it","this","that","here","there","what","how",
+  "can","are","be","with","at","by","from","about","as","but","not","so","if","just","like","myself",
+  "bro","hey","please","pls","sir","maam","guy","guys","ya","yeah","yo","ok","okay"
+]);
+
+/* Normalize string: lowercase, remove punctuation, split to words, filter stopwords */
+function tokenize(s){
+  return s.toLowerCase()
+    .replace(/[’'“”"(),.?;:!\/\\\-]/g," ")
+    .split(/\s+/)
+    .map(w => w.trim())
+    .filter(Boolean)
+    .filter(w => !STOPWORDS.has(w));
+}
+
+/* Find best dataset entry by word overlap */
+function findBestAnswer(userText){
+  const tokens = tokenize(userText);
+  if(tokens.length === 0) return null;
+
+  let bestIndex = -1;
+  let bestScore = 0;
+
+  for(let i=0;i<dataset.length;i++){
+    const qTokens = tokenize(dataset[i].q);
+    // Count overlap
+    let score = 0;
+    const qSet = new Set(qTokens);
+    for(const t of tokens) if(qSet.has(t)) score++;
+    // Also check overlap with answer (helps for different phrasing)
+    const aTokens = tokenize(dataset[i].a);
+    const aSet = new Set(aTokens);
+    for(const t of tokens) if(aSet.has(t)) score += 0.5; // smaller weight
+
+    if(score > bestScore){
+      bestScore = score;
+      bestIndex = i;
+    }
+  }
+
+  // If bestScore too low, try keyword substring match across dataset keys (cheap fallback)
+  if(bestScore < 1){
+    const u = userText.toLowerCase();
+    for(let i=0;i<dataset.length;i++){
+      if(u.includes(dataset[i].q.split(" ")[0])){ // naive
+        bestIndex = i;
+        bestScore = 1;
+        break;
+      }
+    }
+  }
+
+  if(bestIndex === -1) return null;
+  return dataset[bestIndex].a;
+}
+
+/* UI helpers */
+const messages = document.getElementById("messages");
+const inputBox = document.getElementById("inputBox");
+const sendBtn = document.getElementById("sendBtn");
+
+function appendMessage(text, who){
+  const div = document.createElement("div");
+  div.className = 'msg ' + (who === 'user' ? 'user' : 'bot');
+  div.textContent = text;
+  messages.appendChild(div);
+  messages.scrollTop = messages.scrollHeight;
+}
+
+/* Simulate typing with dots then show answer */
+function showBotTypingThen(text){
+  const typing = document.createElement("div");
+  typing.className = 'msg bot';
+  typing.textContent = 'Typing...';
+  messages.appendChild(typing);
+  messages.scrollTop = messages.scrollHeight;
+
+  setTimeout(()=>{
+    messages.removeChild(typing);
+    appendMessage(text, 'bot');
+  }, 550 + Math.min(1200, text.length * 20)); // slight variable delay
+}
+
+/* Send message handler */
+function sendMessage(){
+  const raw = inputBox.value.trim();
+  if(!raw) return;
+  appendMessage(raw, 'user');
+  inputBox.value = '';
+  inputBox.focus();
+
+  // Find best answer
+  const answer = findBestAnswer(raw);
+  if(answer){
+    showBotTypingThen(answer);
+  } else {
+    // smart fallback: offer suggestions or default reply
+    const fallback = "Hmm, I don't have that exact info right now. Try rephrasing — e.g., ask about 'hostel food', 'placement stats', or 'mess timings'.";
+    showBotTypingThen(fallback);
+  }
+}
+
+/* Optional: suggest sample questions on first click focus (light UX) */
+let suggested = false;
+inputBox.addEventListener('focus', ()=>{
+  if(!suggested){
+    setTimeout(()=> {
+      const tip = document.createElement('div');
+      tip.className = 'msg bot';
+      tip.textContent = "Tip: Ask casually — I understand friendly questions like 'How's the hostel food?' or 'Any internships?'";
+      messages.appendChild(tip);
+      messages.scrollTop = messages.scrollHeight;
+      suggested = true;
+    }, 300);
+  }
+});
+</script>
+<script src="pro04.js"></script>
+
+</body>
+</html>
